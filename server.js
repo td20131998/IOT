@@ -15,13 +15,30 @@ const server = http.createServer((req, res) => {
   res.end("Hello World\n");
 });
 
+function saveToExcel(file) {
+  var wb = xlsx.readFile("Data.xlsx");
+  var ws = wb.Sheets[wb.SheetNames[0]];
+  let data = [];
+  client.connect(err => {
+    const collection = client.db("IOT").collection("wemosd1");
+    collection.find({}).toArray((a, result) => {
+      data = result.map(item => [item.time, item.temperatureDHT, item.temperatureBMP]);
+      console.log(data);
+      xlsx.utils.sheet_add_aoa(ws, data, {origin: -1});
+      console.log(ws);
+      xlsx.writeFile(wb, "Data1.xlsx");
+    })
+  })
+};
+
+//saveToExcel("Data.xlsx");
 server.listen(port, hostname, () => {
   console.log(`Server running at http://${hostname}:${port}/`);
   client.connect(err => {
     console.log("Connected successfully to server");
     const collection = client.db("IOT").collection("wemosd1");
     new CronJob(
-      "*/10 * * * * *",
+      "*/20 * * * * *",
       function() {
         console.log("Job running every 10s");
         axios.get("https://dweet.io:443/get/latest/dweet/for/myesp8266_td20131998_8888")
@@ -35,13 +52,7 @@ server.listen(port, hostname, () => {
           collection.insertOne(data, function(err, res) {
             if (err) throw err;
             console.log("1 document inserted");
-            // db.close();
           })
-          // sheet1.cell(`A${startAt}`).value(time);
-          // sheet1.cell(`B${startAt}`).value(data.temperature);
-          // sheet1.cell(`C${startAt}`).value(data.temperature_bmp);
-          // startAt++;
-          // console.log(data);
         });
       },
       null,
@@ -50,17 +61,4 @@ server.listen(port, hostname, () => {
     );
     //client.close();
   });
-
-  // XlsxPopulate.fromFileAsync("./Data.xlsx").then(workbook => {
-  //   // Modify the workbook.
-  //   let startAt = 1;
-  //   const sheet1 = workbook.sheet("Sheet1");
-  //   for(let i = 1;;i++) {
-  //       if (!sheet1.row(i).cell("A").value()) {
-  //           startAt = i;
-  //           break;
-  //       }
-  //   }
-  //   console.log(startAt);
-  // });
 });
